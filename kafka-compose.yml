@@ -1,0 +1,150 @@
+# ===================================================================
+# [개발/테스트용 Kafka 2노드 클러스터 + Zookeeper + 관리 UI 도커 컴포즈]
+#
+# 이 파일을 사용하면, 복잡한 설치 과정 없이
+#  - 카프카(Kafka) 브로커 2개
+#  - Zookeeper 1개
+#  - 웹 기반 관리 UI 2개(Kafdrop, Kafka UI)
+# 를 한 번에 띄울 수 있습니다!
+#
+# =======================================
+version: '3.8'
+  
+services:
+  # -----------------------------------------
+  # Zookeeper: 카프카 브로커의 상태/정보를 관리해주는 역할
+  # -----------------------------------------
+  zookeeper:
+    image: confluentinc/cp-zookeeper:7.6.0
+    container_name: zookeeper
+    environment:
+      ZOOKEEPER_CLIENT_PORT: 2181       # (필수) Zookeeper가 외부와 통신하는 기본 포트
+      ZOOKEEPER_TICK_TIME: 2000         # Zookeeper 내부 동작 시간 단위(ms)
+    ports:
+      - "2181:2181"                     # (좌측: 내PC, 우측:컨테이너) 포트 연결
+    volumes:
+      - type: bind
+        source: ./volumes/zookeeper/data
+        target: /var/lib/zookeeper/data
+        bind:
+          create_host_path: true
+      - type: bind
+        source: ./volumes/zookeeper/logs
+        target: /var/lib/zookeeper/log
+        bind:
+          create_host_path: true
+    networks:
+      - kafka-network
+
+  # -----------------------------------------
+  # Kafka 브로커 1번
+  # -----------------------------------------
+  kafka1:
+    image: wurstmeister/kafka:2.13-2.8.1   # Kafka 안정적 버전 사용 (필요시 업데이트)
+    container_name: kafka1
+    environment:
+      KAFKA_BROKER_ID: 1                       # 브로커 고유 ID (꼭 중복X)
+      KAFKA_ZOOKEEPER_CONNECT: zookeeper:2181  # zookeeper 컨테이너와 연결
+      KAFKA_LISTENERS: PLAINTEXT://0.0.0.0:9092
+      KAFKA_ADVERTISED_LISTENERS: PLAINTEXT://localhost:19092 # 내 PC에서 접속용
+      KAFKA_OFFSETS_TOPIC_REPLICATION_FACTOR: 2
+      KAFKA_TRANSACTION_STATE_LOG_REPLICATION_FACTOR: 2
+      KAFKA_TRANSACTION_STATE_LOG_MIN_ISR: 2
+      KAFKA_LOG_RETENTION_HOURS: 168            # 7일 보관
+      KAFKA_LOG_SEGMENT_BYTES: 1073741824       # 1GB
+      KAFKA_LOG_RETENTION_CHECK_INTERVAL_MS: 300000
+      KAFKA_CREATE_TOPICS: "socket-message-topic:2:2" # (옵션) 서버 실행 시 미리 토픽 생성
+      KAFKA_LOG_DIRS: /kafka/kafka-logs         # 실제 데이터가 저장될 컨테이너 내 디렉토리
+    ports:
+      - "19092:9092"                            # 내PC 19092 → 컨테이너 9092
+    depends_on:
+      - zookeeper                               # zookeeper가 먼저 뜬 뒤 실행
+    volumes:
+      - type: bind
+        source: ./volumes/kafka1/data
+        target: /kafka/kafka-logs
+        bind:
+          create_host_path: true
+    networks:
+      - kafka-network
+    restart: unless-stopped
+
+  # -----------------------------------------
+  # Kafka 브로커 2번 (설정만 다름)
+  # -----------------------------------------
+  kafka2:
+    image: wurstmeister/kafka:2.13-2.8.1
+    container_name: kafka2
+    environment:
+      KAFKA_BROKER_ID: 2
+      KAFKA_ZOOKEEPER_CONNECT: zookeeper:2181
+      KAFKA_LISTENERS: PLAINTEXT://0.0.0.0:9092
+      KAFKA_ADVERTISED_LISTENERS: PLAINTEXT://localhost:19093
+      KAFKA_OFFSETS_TOPIC_REPLICATION_FACTOR: 2
+      KAFKA_TRANSACTION_STATE_LOG_REPLICATION_FACTOR: 2
+      KAFKA_TRANSACTION_STATE_LOG_MIN_ISR: 2
+      KAFKA_LOG_RETENTION_HOURS: 168
+      KAFKA_LOG_SEGMENT_BYTES: 1073741824
+      KAFKA_LOG_RETENTION_CHECK_INTERVAL_MS: 300000
+      KAFKA_LOG_DIRS: /kafka/kafka-logs
+    ports:
+      - "19093:9092"
+    depends_on:
+      - zookeeper
+    volumes:
+      - type: bind
+        source: ./volumes/kafka2/data
+        target: /kafka/kafka-logs
+        bind:
+          create_host_path: true
+    networks:
+      - kafka-network
+    restart: unless-stopped
+
+  # -----------------------------------------
+  # Kafdrop: Kafka 메시지 브라우저 UI (메시지/토픽/파티션 등 확인 가능)
+  # http://localhost:9000 에서 접속
+  # -----------------------------------------
+  kafdrop:
+    image: obsidiandynamics/kafdrop:3.31.0
+    container_name: kafdrop
+    restart: unless-stopped
+    ports:
+      - "9000:9000"
+    environment:
+      KAFKA_BROKERCONNECT: "kafka1:9092,kafka2:9092" # 내부 네트워크용 브로커 주소
+      JVM_OPTS: "-Xms64M -Xmx128M"
+      SERVER_SERVLET_CONTEXTPATH: "/"
+    depends_on:
+      - kafka1
+      - kafka2
+    networks:
+      - kafka-network
+
+  # -----------------------------------------
+  # Kafka UI: 최신형 Kafka 관리 웹 UI (토픽/컨슈머/메시지 등)
+  # http://localhost:8080 에서 접속
+  # -----------------------------------------
+  kafka-ui:
+    image: provectuslabs/kafka-ui:v0.7.1
+    container_name: kafka-ui
+    restart: unless-stopped
+    ports:
+      - "8080:8080"
+    environment:
+      KAFKA_CLUSTERS_0_NAME: local                      # 클러스터 이름
+      KAFKA_CLUSTERS_0_BOOTSTRAPSERVERS: kafka1:9092,kafka2:9092  # 브로커 주소
+      KAFKA_CLUSTERS_0_ZOOKEEPER: zookeeper:2181        # Zookeeper 주소
+      DYNAMIC_CONFIG_ENABLED: "true"                     # 동적 구성 활성화
+    depends_on:
+      - kafka1
+      - kafka2
+    networks:
+      - kafka-network
+
+# -----------------------------------------
+# 네트워크: Kafka 관련 서비스들이 모두 붙을 브릿지 네트워크
+# -----------------------------------------
+networks:
+  kafka-network:
+    driver: bridge

@@ -1,0 +1,25 @@
+server:
+  port: 5000  # API Gateway 서버가 리스닝할 포트 번호
+  max-http-request-header-size: 1MB
+spring:
+  application:
+    name: api-gateway  # 스프링 애플리케이션 이름 설정
+    
+eureka:
+  client:
+    service-url:
+      defaultZone: http://localhost:8761/eureka/  # Eureka 서버의 URL
+    register-with-eureka: true  # Eureka 서버에 자신의 상태를 등록
+    fetch-registry: true  # Eureka 서버로부터 레지스트리 정보를 가져옴
+  instance:
+    lease-renewal-interval-in-seconds: 30  # 상태 갱신 주기 (기본값 30초)
+    lease-expiration-duration-in-seconds: 90  # 갱신 실패 후 만료 시간 (기본값 90초)
+    
+# service value
+jwt:
+  expiration: 36000000
+  secret: "2b44b0b00fd822d8ce753e54dac3dc4e06c2725f7db930f3b9924468b53194dbccdbe23d7baa5ef5fbc414ca4b2e64700bad60c5a7c45eaba56880985582fba4"
+
+services:
+  audio-server:
+    base-url: http://localhost:5001

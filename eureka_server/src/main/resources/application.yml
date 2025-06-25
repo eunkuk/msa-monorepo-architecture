@@ -1,0 +1,93 @@
+# 서버 기본 설정
+server:
+  port: 8761  # Eureka 서버가 리스닝할 포트 번호
+  compression:
+    enabled: true  # HTTP 응답 압축 활성화
+    mime-types: application/json,application/xml,text/html,text/xml,text/plain  # 압축할 MIME 타입 목록
+    min-response-size: 1024  # 압축을 적용할 최소 응답 크기 (바이트)
+#  ssl:
+#    key-store: classpath:keystore.p12  # SSL 키 스토어 경로
+#    key-store-password: ${SSL_KEYSTORE_PASSWORD}  # SSL 키 스토어 비밀번호 (환경 변수로 설정)
+#    key-store-type: PKCS12  # 키 스토어 타입
+#    key-alias: eureka  # SSL 인증서 별칭
+
+# 스프링 애플리케이션 설정
+spring:
+  application:
+    name: eureka-server  # 스프링 애플리케이션 이름 설정
+  security:
+    user:
+      name: ${EUREKA_USERNAME:admin}  # Eureka 대시보드 접근용 사용자 이름 (환경 변수에서 가져오거나 기본값 사용)
+      password: ${EUREKA_PASSWORD:StrongPassword123!}  # 사용자 비밀번호 (환경 변수에서 가져오거나 기본값 사용)
+  main:
+    lazy-initialization: true  # 지연 초기화 활성화 (애플리케이션 시작 시간 단축)
+  jmx:
+    enabled: false  # JMX 비활성화 (리소스 사용 감소)
+  metrics:
+    export:
+      prometheus:
+        enabled: true  # Prometheus로 메트릭 내보내기 활성화
+
+# Eureka 서버 설정
+eureka:
+  instance:
+    hostname: ${EUREKA_HOSTNAME:localhost}  # Eureka 서버 호스트 이름 (환경 변수에서 가져오거나 기본값 사용)
+    prefer-ip-address: true  # IP 주소를 호스트 이름 대신 사용
+    status-page-url-path: /actuator/info  # 서비스 상태 페이지 URL
+    health-check-url-path: /actuator/health  # 헬스 체크 URL
+    lease-renewal-interval-in-seconds: 30  # 클라이언트가 갱신 신호를 보내는 주기 (초)
+    lease-expiration-duration-in-seconds: 90  # 갱신 신호가 끊긴 후 만료되기까지의 시간 (초)
+  client:
+    register-with-eureka: false  # 자신을 다른 Eureka 서버에 등록하지 않음 (단독 서버 모드)
+    fetch-registry: false  # 레지스트리 정보를 로컬에 캐싱하지 않음 (단독 서버 모드)
+#    service-url:
+#      defaultZone: http://peer1:8761/eureka/,http://peer2:8762/eureka/  # 다른 Eureka 서버 URL 목록 (클러스터 구성)
+    healthcheck:
+      enabled: true  # 헬스 체크 활성화
+  server:
+    enable-self-preservation: true  # 자가 보존 모드 활성화 (네트워크 오류 시 서비스 제거 방지)
+    eviction-interval-timer-in-ms: 60000  # 만료된 인스턴스 제거 주기 (1분)
+    peer-eureka-nodes-update-interval-ms: 30000  # 피어 노드 업데이트 간격 (30초)
+    renewal-percent-threshold: 0.85  # 자가 보존 모드 임계값
+    response-cache-update-interval-ms: 30000  # 응답 캐시 업데이트 주기
+    use-read-only-response-cache: true  # 읽기 전용 응답 캐시 사용
+    max-threads-for-peer-replication: 20  # 피어 복제를 위한 최대 스레드 수
+    max-elements-in-peer-replication-pool: 10000  # 피어 복제 풀의 최대 요소 수
+    max-time-for-replication: 30000  # 복제 작업의 최대 허용 시간 (30초)
+    rate-limiter-enabled: true  # API 요청 속도 제한 활성화
+    rate-limiter-throttle-standard-clients: false  # 표준 클라이언트에 대한 요청 제한 비활성화
+    rate-limiter-registry-fetch-average-rate: 500  # 레지스트리 가져오기 요청의 평균 속도 제한
+    rate-limiter-full-fetch-average-rate: 100  # 전체 레지스트리 가져오기 요청의 평균 속도 제한
+    rate-limiter-burst-size: 20  # 속도 제한기의 버스트 크기
+
+# 관리 및 모니터링 설정
+management:
+  endpoints:
+    web:
+      exposure:
+        include: health,info,prometheus  # 노출할 Actuator 엔드포인트 (health, info, prometheus)
+  endpoint:
+    health:
+      show-details: always  # health 엔드포인트에서 상세 정보 표시
+
+# 로깅 설정
+logging:
+  level:
+    com.netflix.eureka: INFO  # Eureka 관련 로그 레벨
+    com.netflix.discovery: INFO  # Discovery 관련 로그 레벨
+    org.springframework.cloud: INFO  # Spring Cloud 관련 로그 레벨
+  pattern:
+    console: "%d{yyyy-MM-dd HH:mm:ss} [%thread] %-5level %logger{36} - %msg%n"  # 콘솔 로그 패턴
+#  file:
+#    name: logs/eureka-server.log  # 로그 파일 경로
+#  logback:
+#    rollingpolicy:
+#      max-file-size: 10MB
+#      max-history: 10
+
+# 리본 설정 (클라이언트 측 로드 밸런싱)
+ribbon:
+  eureka:
+    enabled: true  # Eureka와 Ribbon 통합 활성화
+  ConnectTimeout: 500  # 연결 타임아웃 (밀리초)
+  ReadTimeout: 1000  # 읽기 타임아웃 (밀리초)

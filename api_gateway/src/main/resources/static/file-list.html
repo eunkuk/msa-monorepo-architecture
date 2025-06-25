@@ -1,0 +1,74 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+    <meta charset="UTF-8">
+    <title>녹음 파일 목록</title>
+    <style>
+        body { font-family: 'Malgun Gothic', sans-serif; margin: 40px; background-color: #f4f7f6; }
+        h1 { color: #333; }
+        #fileList { list-style-type: none; padding: 0; }
+        #fileList li {
+            background-color: #fff;
+            margin: 10px 0;
+            padding: 15px;
+            border-radius: 5px;
+            box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+        }
+        #fileList a {
+            text-decoration: none;
+            color: #007bff;
+            font-weight: bold;
+        }
+        #fileList a:hover {
+            text-decoration: underline;
+        }
+        #message {
+            color: #888;
+            font-style: italic;
+        }
+    </style>
+</head>
+<body>
+    <h1>녹음 파일 목록</h1>
+    <ul id="fileList"></ul>
+    <p id="message"></p>
+
+    <script>
+        document.addEventListener('DOMContentLoaded', function() {
+            const fileList = document.getElementById('fileList');
+            const message = document.getElementById('message');
+
+            fetch('/api/files')
+                .then(response => {
+                    if (!response.ok) {
+                        throw new Error('파일 목록을 불러오는 데 실패했습니다.');
+                    }
+                    return response.json();
+                })
+                .then(files => {
+                    if (files.length === 0) {
+                        message.textContent = '표시할 파일이 없습니다.';
+                        return;
+                    }
+                    files.forEach(fileName => {
+                        const li = document.createElement('li');
+                        const a = document.createElement('a');
+                        a.href = `/api/download/${fileName}`;
+                        a.textContent = fileName;
+                        a.setAttribute('download', ''); 
+                        
+                        li.appendChild(a);
+                        fileList.appendChild(li);
+                    });
+                })
+                .catch(error => {
+                    console.error('Error fetching files:', error);
+                    message.textContent = '오류가 발생했습니다: ' + error.message;
+                });
+        });
+    </script>
+</body>
+</html> 

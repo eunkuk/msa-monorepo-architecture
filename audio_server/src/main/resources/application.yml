@@ -1,0 +1,23 @@
+server:
+  port: 5001  # API Gateway 서버가 리스닝할 포트 번호
+
+spring:
+  application:
+    name: audio-server  # 스프링 애플리케이션 이름 설정
+  devtools: # 자동 재시작 off
+    restart:
+      enabled: false
+
+eureka:
+  client:
+    service-url:
+      defaultZone: http://localhost:8761/eureka/  # Eureka 서버의 URL
+    register-with-eureka: true  # Eureka 서버에 자신의 상태를 등록
+    fetch-registry: true  # Eureka 서버로부터 레지스트리 정보를 가져옴
+  instance:
+    lease-renewal-interval-in-seconds: 30  # 상태 갱신 주기 (기본값 30초)
+    lease-expiration-duration-in-seconds: 90  # 갱신 실패 후 만료 시간 (기본값 90초)
+
+services:
+  audio-server:
+    base-url: http://localhost:5001

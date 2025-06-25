@@ -1,0 +1,60 @@
+import org.springframework.boot.gradle.plugin.SpringBootPlugin
+
+plugins {
+    id 'java'
+    id 'java-library'  // 라이브러리 모듈임을 명시
+    id 'org.springframework.boot' version '3.3.4'
+    id 'io.spring.dependency-management' version '1.1.6'
+}
+
+group = 'com.kr'
+version = '0.0.1-SNAPSHOT'
+
+java {
+    toolchain {
+        languageVersion = JavaLanguageVersion.of(17)
+    }
+}
+
+// Spring Boot 플러그인을 직접 적용하지 않고 의존성만 관리
+dependencyManagement {
+    imports {
+        mavenBom SpringBootPlugin.BOM_COORDINATES
+        mavenBom "org.springframework.cloud:spring-cloud-dependencies:2023.0.3"
+    }
+}
+
+repositories {
+    mavenCentral()
+}
+
+dependencies {
+    // core-common 모듈 의존성
+    api project(':core-common')
+
+    // 웹 관련 의존성
+    api 'org.springframework.boot:spring-boot-starter-web'
+    api 'org.springframework.boot:spring-boot-starter-aop'
+    api 'org.springframework.boot:spring-boot-starter-validation'
+    implementation 'org.springframework.boot:spring-boot-starter-webflux'
+
+    // lombok
+    compileOnly 'org.projectlombok:lombok'
+    annotationProcessor 'org.projectlombok:lombok'
+
+    // 테스트 의존성
+    testImplementation 'org.springframework.boot:spring-boot-starter-test'
+}
+
+// 실행 가능한 jar를 만들지 않음
+tasks.named('bootJar') {
+    enabled = false
+}
+
+jar {
+    enabled = true
+}
+
+tasks.named('test') {
+    useJUnitPlatform()
+}

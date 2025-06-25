@@ -1,0 +1,8 @@
+rootProject.name = 'api-gateway-test'
+
+include 'core-common'
+include 'core-web'
+include 'kafka-core'
+include 'api_gateway'
+include 'audio_server'
+include 'eureka_server'

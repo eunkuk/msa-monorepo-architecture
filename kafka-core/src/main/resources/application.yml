@@ -1,0 +1,21 @@
+spring:
+  kafka:
+    # 카프카 브로커 주소. 환경변수(KAFKA_BOOTSTRAP_SERVERS)가 있으면 사용, 없으면 localhost로 기본값 지정
+    bootstrap-servers: ${KAFKA_BOOTSTRAP_SERVERS:localhost:19092,localhost:19093}
+    consumer:
+      # Kafka Consumer 그룹ID. 같은 그룹ID로 묶이면 파티션이 분배됨
+      group-id: default-group
+      # 컨슈머가 처음 시작할 때 오프셋이 없으면 어디서부터 읽을지(earliest: 처음부터)
+      auto-offset-reset: earliest
+      # Kafka 메시지 key 역직렬화 방식(문자열)
+      key-deserializer: org.apache.kafka.common.serialization.StringDeserializer
+      # Kafka 메시지 value 역직렬화 방식(JSON to Object)
+      value-deserializer: org.springframework.kafka.support.serializer.JsonDeserializer
+      properties:
+        # 역직렬화 가능한 클래스 패키지(보안용). com.kr.* 아래 클래스만 허용
+        spring.json.trusted.packages: com.kr.*
+    producer:
+      # Kafka 메시지 key 직렬화 방식(문자열)
+      key-serializer: org.apache.kafka.common.serialization.StringSerializer
+      # Kafka 메시지 value 직렬화 방식(Object to JSON)
+      value-serializer: org.springframework.kafka.support.serializer.JsonSerializer

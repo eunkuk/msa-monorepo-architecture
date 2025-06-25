@@ -1,11 +1,13 @@
 package com.kr.audio_server.service;
 
 import com.kr.audio_server.dto.IdleRequest;
+import com.kr.audio_server.dto.RecordCompletedEvent;
 import com.kr.audio_server.dto.RecordRequest;
 import com.kr.audio_server.exception.AudioServiceErrorCode;
 import com.kr.core.util.DateUtils;
 import com.kr.core.util.StringUtils;
 import com.kr.core.web.exception.BusinessException;
+import com.kr.kafka.component.EventPublisher;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.stereotype.Service;
 
@@ -15,6 +17,7 @@ import java.io.FileOutputStream;
 import java.io.IOException;
 import java.nio.file.Files;
 import java.nio.file.Paths;
+import java.time.LocalDateTime;
 import java.util.Base64;
 import java.util.HashMap;
 import java.util.Map;
@@ -30,9 +33,15 @@ public class RecordService {
 
     private final Map<String, String> filePathMap = new HashMap<>();
     private final Map<String, BufferedOutputStream> fileStreamMap = new HashMap<>();
+    private final Map<String, String> metaIdMap = new HashMap<>();
+    private final EventPublisher eventPublisher;
 
     private static final int BUFFER_SIZE = 32768;
     private static final String FILE_PATH = System.getProperty("user.dir") + File.separator + "recordings";
+
+    public RecordService(EventPublisher eventPublisher) {
+        this.eventPublisher = eventPublisher;
+    }
 
     /**
      * 녹음 세션을 시작하는 메서드
@@ -48,6 +57,9 @@ public class RecordService {
             String fileIdentifier = StringUtils.isEmpty(dto.getMetaId()) 
                     ? dto.getSessionId() 
                     : dto.getMetaId();
+
+            // metaId 저장
+            metaIdMap.put(dto.getSessionId(), dto.getMetaId());
 
             // core 모듈의 DateUtils 사용
             String now = DateUtils.getCurrentTimestamp();
@@ -99,6 +111,7 @@ public class RecordService {
     /**
      * 녹음 세션을 종료하는 메서드
      * 파일 스트림을 닫고 세션 관련 리소스를 정리합니다.
+     * 녹음 완료 시 카프카 이벤트를 발행합니다.
      *
      * @param sessionId 종료할 세션 ID
      */
@@ -107,6 +120,7 @@ public class RecordService {
 
         BufferedOutputStream bos = fileStreamMap.get(sessionId);
         String filePath = filePathMap.get(sessionId);
+        String metaId = metaIdMap.get(sessionId);
 
         if (bos == null || filePath == null) {
             log.error("[end] No open stream or file path for sessionId: {}", sessionId);
@@ -116,12 +130,30 @@ public class RecordService {
         try {
             bos.flush();
             bos.close();
+            
+            // 파일명 추출
+            String fileName = new File(filePath).getName();
+            
+            // 녹음 완료 이벤트 발행
+            RecordCompletedEvent event = new RecordCompletedEvent(
+                sessionId,
+                metaId,
+                filePath,
+                fileName,
+                LocalDateTime.now()
+            );
+            
+            // kafka-core의 EventPublisher를 사용하여 이벤트 발행
+            eventPublisher.publish(event, sessionId);
+            log.info("[end] Record completed event published for sessionId: {}, fileName: {}", sessionId, fileName);
+            
         } catch (IOException e) {
             log.error("[RECORD] [END] [ERR] Error closing stream: {}", e.getMessage(), e);
             throw new BusinessException(AudioServiceErrorCode.FILE_PROCESSING_ERROR);
         } finally {
             fileStreamMap.remove(sessionId);
             filePathMap.remove(sessionId);
+            metaIdMap.remove(sessionId);
         }
     }
 }

@@ -31,6 +31,7 @@ dependencies {
     // core 모듈 의존성 변경
     implementation project(':core-web')
     implementation project(':core-common')
+    implementation project(':kafka-core')
 
     implementation 'org.springframework.boot:spring-boot-starter-web'
     implementation 'org.springframework.cloud:spring-cloud-starter-netflix-eureka-client'

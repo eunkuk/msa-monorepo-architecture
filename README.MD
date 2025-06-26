@@ -1,117 +1,137 @@
-# 마이크로서비스 아키텍처 프로젝트
 
-이 프로젝트는 Spring Cloud 기반의 MonoRepo 마이크로서비스 아키텍처를 구현한 예제입니다. 주요 구성 요소와 실행 순서에 대한 설명입니다.
+# 🎧 Microservices Architecture Example (Spring Cloud, Monorepo)
 
-## 구성 요소
+이 프로젝트는 **Spring Cloud 기반의 모노레포(Monorepo) 마이크로서비스 아키텍처** 예제입니다.  
+도메인 기능(오디오 녹음, 파일관리)을 **MSA 구조**로 분리하고,  
+**이벤트 기반 아키텍처(Kafka), 서비스 디스커버리(Eureka), API Gateway** 등 다양한 구조를 구현합니다.
 
-### 1. Kafka (kafka-compose.yml)
-- **역할**: 메시지 브로커로서 서비스 간 비동기 통신을 담당
-- **기능**: 이벤트 기반 통신, 데이터 스트리밍, 실시간 메시지 처리
-- **구성**: 
-  - Zookeeper: Kafka 클러스터 관리
-  - Kafka 브로커 2개: 메시지 저장 및 처리
-  - Kafdrop: Kafka 모니터링 UI (http://localhost:9000)
-  - Kafka UI: 고급 관리 도구 (http://localhost:8080)
-- **포트**: 19092, 19093 (Kafka), 2181 (Zookeeper)
+단순 예제로 상세 로직은 구현이 필요합니다.
 
-### 2. Eureka Server
-- **역할**: 서비스 디스커버리 및 레지스트리 서버
-- **기능**: 서비스 등록, 검색, 헬스 체크, 상태 관리
-- **특징**: 서비스 인스턴스의 동적 확장 및 축소 지원
-- **포트**: 8761 (관리 UI: http://localhost:8761)
-
-### 3. Audio Server
-- **역할**: 오디오 녹음 및 파일 관리를 담당하는 마이크로서비스
-- **기능**: 
-  - 오디오 녹음 세션 관리 (/record/start, /record/idle, /record/end)
-  - 녹음된 오디오 파일 목록 조회 (/api/files)
-  - 녹음된 오디오 파일 다운로드 (/api/download/{fileName})
-- **특징**: WebM 형식으로 오디오 파일 저장, Base64 인코딩 사용
-- **포트**: 5001
-
-### 4. API Gateway
-- **역할**: 클라이언트 요청을 적절한 서비스로 라우팅하는 중앙 관문
-- **기능**: 
-  - 요청 라우팅 및 로드 밸런싱
-  - WebSocket 연결 처리
-- **포트**: 5000
-
-## 공통 모듈
-
-### 1. core-common
-- **역할**: 여러 모듈에서 공통으로 사용되는 유틸리티 클래스 (String, Date, File 등)를 제공합니다.
-- **특징**: 특정 프레임워크에 대한 의존성 없이 순수 Java 코드로 작성되어 어떤 프로젝트에서도 재사용 가능합니다.
-
-### 2. core-web
-- **역할**: Spring Web 환경에 특화된 공통 기능을 제공합니다.
-- **기능**:
-  - `WebClient` 빈을 자동 설정하여 다른 서비스에서 HTTP 통신을 쉽게 할 수 있도록 지원합니다.
-  - AOP 기반의 로깅, 예외 처리, 보안 필터 등 웹 애플리케이션에 필요한 공통 기능을 포함합니다.
-- **특징**: `spring-boot-autoconfigure`를 통해 별도 설정 없이 의존성 추가만으로 기능을 활성화할 수 있습니다.
-
-## 빌드 방법
-
-이 프로젝트는 멀티 모듈 프로젝트이므로 반드시 루트 디렉토리에서 빌드해야 합니다.
-
-```bash
-# 프로젝트 루트 디렉토리로 이동
-cd project-root-path
-
-# Gradle로 빌드
-./gradlew build
 ```
 
-> **주의**: 개별 모듈 디렉토리에서 직접 빌드하면 의존성 문제가 발생할 수 있습니다. 항상 프로젝트 루트 디렉토리에서 빌드하세요.
+프로젝트 실행 후 확인 가능
+음성생성
+ - http://localhost:5000/websocket-test.html
+저장 목록
+ - http://localhost:5000/file-list.html
+ 
+```
+---
 
-## 실행 순서 및 방법
+## 🧩 주요 구성 요소
 
-### 1. Kafka 실행 (첫 번째로 실행)
-```bash
-# 필요한 볼륨 디렉토리 생성
-mkdir -p volumes/zookeeper/data volumes/zookeeper/logs volumes/kafka1/data volumes/kafka2/data
+- **API Gateway**
+  - 클라이언트의 모든 요청을 받아 각 마이크로서비스로 라우팅
+  - WebSocket 연결 지원, 라우팅/로드밸런싱 구현
 
-# Docker Compose로 Kafka 실행
-docker-compose -f kafka-compose.yml up -d
+- **Eureka Server**
+  - 서비스 디스커버리 및 레지스트리(서비스 등록/검색/헬스체크)
+
+- **Audio Server**
+  - 오디오 녹음/파일 관리 담당
+  - 녹음 시작/종료, 파일 목록/다운로드 API 제공
+
+- **Kafka (with Kafdrop/Kafka UI)**
+  - 서비스 간 비동기 메시지/이벤트 통신
+  - 이벤트 발행/소비자 구조, 모니터링 도구 포함
+
+- **공통 Core 모듈**
+  - `core-common`: 프레임워크 독립 유틸리티
+  - `core-web`: Spring Web 공통 기능(AOP, WebClient, 예외처리 등)
+  - `kafka-core`: Kafka 이벤트 처리 공통 모듈
+
+---
+
+## 💡 아키텍처 특징
+
+- **모노레포(Monorepo) 멀티모듈 구조**  
+  여러 마이크로서비스 및 공통 모듈을 하나의 저장소에서 효율적으로 관리
+
+- **모듈화/재사용성**  
+  공통 기능(Core)과 서비스별 독립성 모두 확보
+
+- **이벤트 기반 아키텍처**  
+  Kafka를 통한 비동기 통신/느슨한 결합/확장성 강화
+
+- **서비스 디스커버리/로드밸런싱**  
+  Eureka 기반 동적 확장/장애 대응 구조
+
+- **운영 편의성**  
+  Docker Compose 기반 Kafka 클러스터 & Kafdrop/Kafka UI 제공
+
+---
+
+## 🚀 빠른 시작/실행 가이드
+
+**실행/설치 및 자세한 안내는 [실행 가이드(RUNNING.md)](./RUNNING.md) 문서를 참고하세요.**
+
+- 전체 서비스, 모듈, 의존성 설치/실행 방법, 순서 등을 정리
+
+---
+
+
+## 🔄 오디오 처리 흐름과 이벤트 기반 아키텍처
+
+이 프로젝트는 **이벤트 기반 아키텍처(Event-Driven Architecture)**를 통해 마이크로서비스 간 느슨한 결합과 확장성을 구현합니다.
+
+### 📝 오디오 녹음 및 파일 저장 프로세스
+
+```mermaid
+sequenceDiagram
+    Client->>API Gateway: 1. WebSocket 연결 요청
+    API Gateway->>Audio Server: 2. 녹음 시작 요청 라우팅
+    Audio Server->>Audio Server: 3. 파일 스트림 생성
+    Client->>API Gateway: 4. 오디오 데이터 전송
+    API Gateway->>Audio Server: 5. 오디오 청크 데이터 전달
+    Audio Server->>File System: 6. 파일에 데이터 저장
+    Client->>API Gateway: 7. 녹음 종료 요청
+    API Gateway->>Audio Server: 8. 종료 요청 라우팅
+    Audio Server->>File System: 9. 파일 스트림 닫기
+    Audio Server->>Kafka: 10. RecordCompletedEvent 발행
+    Kafka->>Audio Server: 11. 이벤트 소비 및 후처리
 ```
 
-### 2. Eureka Server 실행 (두 번째로 실행)
-```bash
-# Eureka Server 디렉토리로 이동
-cd eureka_server
+### 🔄 이벤트 기반 처리 흐름
 
-# Gradle로 실행
-./gradlew bootRun
-```
+1. **녹음 시작 (Start)**
+  - 클라이언트가 WebSocket을 통해 녹음 시작 요청
+  - `RecordService`가 파일 스트림 생성 및 세션 관리 시작
 
-### 3. Audio Server 실행 (세 번째로 실행)
-```bash
-# Audio Server 디렉토리로 이동
-cd audio_server
+2. **데이터 저장 (Save Chunk)**
+  - Base64로 인코딩된 오디오 데이터를 수신
+  - 디코딩 후 파일 스트림에 청크 단위로 저장
 
-# Gradle로 실행
-./gradlew bootRun
-```
+3. **녹음 종료 (End)**
+  - 파일 스트림 종료 및 리소스 정리
+  - `RecordCompletedEvent` 생성 및 Kafka로 발행
+   ```java
+   RecordCompletedEvent event = new RecordCompletedEvent(
+       sessionId, metaId, filePath, fileName, LocalDateTime.now()
+   );
+   eventPublisher.publish(event, sessionId);
+   ```
 
-### 4. API Gateway 실행 (마지막으로 실행)
-```bash
-# API Gateway 디렉토리로 이동
-cd api_gateway
+4. **이벤트 소비 (Consume)**
+  - `RecordCompletedConsumer`가 이벤트 수신
+  - 파일 후처리, 메타데이터 저장, 추가 비즈니스 로직 실행
+   ```java
+   @KafkaListener(topics = "audio.record.completed", groupId = "audio-service")
+   public void consume(RecordCompletedEvent event) {
+       // 파일 후처리 로직 실행
+   }
+   ```
 
-# Gradle로 실행
-./gradlew bootRun
-```
+### 💡 이벤트 기반 아키텍처의 장점
 
-## 실행 순서가 중요한 이유
+- **확장성**: 새로운 소비자 서비스 추가만으로 기능 확장 가능
+- **느슨한 결합**: 서비스 간 직접 의존성 없이 이벤트로 통신
+- **장애 격리**: 한 서비스의 장애가 전체 시스템에 영향 최소화
+- **비동기 처리**: 시간이 오래 걸리는 작업을 비동기적으로 처리
 
-1. **Kafka**는 독립적으로 실행되며 API Gateway의 메시지 처리 기능에 필요합니다.
-2. **Eureka Server**는 서비스 디스커버리를 담당하므로 다른 서비스보다 먼저 실행되어야 합니다.
-3. **Audio Server**는 Eureka Server에 자신을 등록하므로 Eureka Server가 실행된 후에 시작해야 합니다.
-4. **API Gateway**는 Eureka Server에 자신을 등록하고 Audio Server로 요청을 라우팅하므로 다른 서비스가 준비된 후 마지막에 실행하는 것이 좋습니다.
+### 📊 모니터링 및 관리
 
-## 서비스 확인 방법
+- **Kafdrop/Kafka UI**를 통해 이벤트 흐름 실시간 모니터링
+- 토픽, 파티션, 컨슈머 그룹 상태 확인 및 관리
+- 이벤트 발행/소비 지연 및 오류 감지
 
-- **Eureka Dashboard**: http://localhost:8761
-- **Kafka 모니터링(Kafdrop)**: http://localhost:9000
-- **Kafka UI**: http://localhost:8080
-- **Audio Server**: http://localhost:5001
-- **API Gateway**: http://localhost:5000
+이 아키텍처를 통해 오디오 파일 생성 후 자동으로 후속 처리가 이루어지며, 시스템 확장 시 기존 코드 수정 없이 새로운 이벤트 소비자만 추가하면 됩니다.
